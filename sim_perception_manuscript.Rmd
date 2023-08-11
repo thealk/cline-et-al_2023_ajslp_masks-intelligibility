@@ -1,0 +1,934 @@
+---
+title: Effect of face masks and speech style on speech intelligibility and listener
+  effort in Parkinson's disease
+author: "Nathaniel Cline^1^, Thea Knowles^2^, Gursharan Badh^1^"
+date: "Last updated `r Sys.Date()`"
+output:
+  bookdown::word_document2: null
+  pdf_document: default
+  word_document: default
+  reference_docx: custom_reference2.docx
+  html_document: default
+csl: apa7.csl
+bibliography: references.bib
+---
+
+<!-- Note: minor changes may have been made to the final published document at the final revision/proofs stages that are not reflected in the text in this .Rmd document. This .Rmd document and the accopanying .R helper script and .RData file do reflect the final analyses. -->
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, cache=TRUE)
+#knitr::opts_knit$set(root.dir = '../')
+
+# Function to generate project specific .bib file
+library(stringr)
+clean_bib <- function(input_file, input_bib, output_bib){
+  lines <- paste(readLines(input_file), collapse = "")
+  entries <- unique(str_match_all(lines, "@([a-zA-Z0-9]+)[,\\. \\?\\!\\]\\;]")[[1]][, 2])
+
+  bib <- paste(readLines(input_bib), collapse = "\n")
+  bib <- unlist(strsplit(bib, "\n@"))
+
+  output <- sapply(entries, grep, bib, value = T)
+  output <- paste("@", output, sep = "")
+
+  writeLines(unlist(output), output_bib)
+}
+# Call the function below to generate project specific .bib
+# Note: original library located in another GitHub repo
+# clean_bib("sim_perception_manuscript.Rmd", "../References/My Library.bib", "references.bib")
+```
+
+```{r setup2}
+library(thear)
+library(captioner)
+library(cowplot)
+library(flextable)
+library(emmeans)
+library(scales)
+
+report_p <- thear::report_p
+
+source("sim_perception_helper.R")
+
+figs <- captioner::captioner(prefix="Figure")
+tbls <- captioner::captioner(prefix="Table")
+
+```
+
+```{r fig-settings}
+group_colors <- c("#1b7837","#2166ac")
+
+myggplot <- function(...) ggplot2::ggplot(...) +
+  scale_color_manual(values = mask_col)+
+  scale_fill_manual(values = mask_col)+
+  theme(legend.position = "bottom")+
+  theme_bw()
+
+# Figure save syntax
+fig_path = "figs-tbls/"
+fig_name = ""
+# Figure preview syntax:
+##tjmisc::ggpreview(width=10, units="in",device="pdf")
+#ggsave(paste0(fig_path,fig_name), width=10, units = "in", dpi=300)
+
+# Table save syntax
+tbl_path = "figs-tbls/"
+tbl_name = ""
+# Syntax for flextables:
+# flextable::save_as_docx(tbl_m_rate,
+#   path = paste0(tbl_path, tbl_name)
+# )
+# Syntax for sjplot tables (to html)
+# sjPlot::tab_model(mod_i, mod_e,
+#                   df.method = "satterthwaite", file="manuscript/tbls/mod_i-e.html")
+# Note webshot works if you want to save as png
+#webshot::webshot(paste0(tbl_path,tbl_name,".png"))
+```
+
+
+^1^Department of Communicative Disorders and Sciences, University at Buffalo, Buffalo, NY; ^2^Communicative Sciences and Disorders, Michigan State University, East Lancing, MI
+
+**Correspondence to:**
+
+**Conflict of Interest Statement:** The authors have no conflicts of interest to disclose.
+
+**Funding**: No funding was received for the current study.
+
+\newpage
+
+# Abstract 
+
+**Purpose**
+Quantify the combined effects of face masks and effortful speech styles on listener intelligibility and perceived listener effort in talkers with and without Parkinson’s disease.
+
+**Method**
+Ten people with Parkinson’s disease and 10 healthy, older controls read aloud sentences in two face mask and three speech style conditions. Masks included no mask and KN95 masks. Speech styles included habitual, clear, and loud. Listener participants were tasked with listening to each sentence mixed with background noise and then transcribing what they heard and rating how effortful it was to understand. Listener accuracy and effort were each modeled as a function of speaker group, face mask, and speech style using linear mixed effects regression.
+
+**Results**
+Listeners were less accurate and reported greater listening effort for the PD group and for the mask condition. Listeners were more accurate and reported less effort when listening to clear and loud compared to habitual speech. Listener accuracy and listener effort were strongly negatively correlated across all conditions. Face masks were also associated with a steeper decline in speech intelligibility and an increase in listener effort for talkers with PD.
+
+**Discussion**
+Face masks resulted in steeper speech intelligibility decline for talkers with PD compared to controls. Speaking more loudly *or* more clearly when wearing a face mask improved intelligibility for talkers with PD compared to habitual speech, and both speech styles resulted in speech intelligibility levels that approximated talkers’ baseline intelligibility levels without a mask. 
+
+\newpage
+
+# Introduction
+
+## Effect of face masks on speech
+
+In response to the surge of the COVID-19 pandemic, the CDC recommended that the population at large begin wearing face masks to prevent the spread of the disease. Unfortunately, face masks have been shown to negatively impact intelligibility of masked speakers by degrading the speech signal [@cohn2021;@toscano2021]. In quiet environments, most face masks have a negligible effect on intelligibility, but in the presence of competing background noise, masks have a pronounced effect on intelligibility [@rahne2021; @brown2021; @carraturo2021]. Not only does the impedance of the acoustic signal impact intelligibility, but the obscurance of the mouth plays a role as well; although transparent face masks severely impact the acoustic signal, the availability of visual cues may partially make up for it [@brown2021; @yi2021]. The degree of this impact varies by mask type and likely depends on the material and construction of the mask; for instance, surgical masks seem to have a minimal effect on speech acoustics due to their ability to filter small particles, while transparent masks show the greatest attenuation as they are made from acoustically reflective material, and most other masks (such as KN95s and cloth masks) tend to fall somewhere in the middle [@corey2020]. KN95s are similar to N95s in construction and that they are a type of disposable respirator effective in filtering out small particles, but they differ in that they are not approved by the National Institute for Occupational Safety and Health [@cdc2022]. Not only do masks reduce intelligibility, but they also increase the effort required for listeners to comprehend masked talkers’ speech [@carraturo2021]. Populations who demonstrated reduced speech intelligibility to begin with, such as those with speech disorders, may be at further risk of communication difficulties when wearing masks.
+
+There are a number of underlying acoustic mechanisms at play here. Possibly the most prevalent of these is that masks have been shown to act as a low-pass filter, attenuating frequencies above approximately 1kHz [@@corey2020; @maryn2021]. Use of face masks is also associated with steeper spectral tilt, less energy in mid-range frequencies, and a small reduction in speech intensity [@knowles2022; @knowles2023; @nguyen2021acoustic]. @knowles2022 also measured four spectral moments (center of gravity, standard deviation of center of gravity, skewness, and kurtosis), each of which was significantly altered in the presence of the KN95 mask compared to the surgical mask. Others, however, report different findings, as @maryn2021, found no significant effects of masks on spectral moments of pre-recorded vowel prolongations.
+
+
+## Speech and speech intelligibility in Parkinson's disease
+
+The majority of people with idiopathic Parkinson’s disease develop hypokinetic dysarthria [@logemann1978; @mutch1986; @muller2001], a speech disorder associated with a reduction in the mobility of muscle movements used in speech, particularly shown in abnormally smaller and less forceful speech movements [@duffy2019]. Perceptual symptoms of hypokinetic dysarthria include reduced loudness [hypophonia; @ludlow1984; @adams2009] and breathy or hoarse voice quality [@logemann1973]. Acoustically, these can also be described in terms of reduced vocal intensity [@adams2005; @fox1997; @ho1999] and spectral attenuation [@cushnie-sparrow2021]. Hypokinetic dysarthria is also associated with deficits related to imprecise articulation, such as distortion of stops, affricates, and fricatives, apparently resulting from an inadequate narrowing of the vocal tract [@logemann1981], voicing during the typically voiceless closure interval of voiceless stops [@weismer1984], and longer voice-onset-times [@forrest1989]. 
+
+All of these factors contribute to reduced speech intelligibility, which may be further compounded by the addition of face masks. Hypophonia is involved in reduced intelligibility, communicative effectiveness, and communicative participation [@adams2009; @tjaden2008], with loudness and spectral balance being critical components of the cluster of symptoms [@cushnie-sparrow2021]. This, paired with symptoms such as abnormal voice quality, monopitch, monoloudness, reduced stress and intonation patterns, and overall lack of articulatory precision lead to reduced speech intelligibility. Considering that masks lower speech intensity, attenuate higher frequencies, and reduce spectral tilt [@badh2022], the addition of face masks to people with PD results in further reduction of speech intelligibility.
+
+## Clear and loud speech strategies in PD:
+
+Many studies have investigated how altering one’s speech style can improve speech intelligibility [@tjaden2013; @yi2021; @tjaden2014; @knowles2022]. Two such speaking styles are clear speech and loud speech, as compared to habitual speech. These have been shown to result in similar spectral changes, mirroring those of increased vocal effort [@rosenthal2014], such as being produced with greater speech intensity compared to habitual speech (with this increase being greater in loud speech [@tjaden2013] and having increased energy in higher frequency ranges, leading to flatter spectral slopes [which have been attributed to greater relative energy in the first formant range; @fant1960; @ternstrom2006]. When instructed to speak clearly, speech is associated with an increase in energy in mid-range frequencies [i.e. 1-3kHz; @krause2004; @krause2009; @hazan2018; @hazan2011; @gilbert2014; @smiljanic2021], although different instructions may have different results [@lam2012; @stipancic2022].  Overall, in healthy talkers, both clear and loud speaking styles have also been shown to yield better intelligibility in the context of face masks [@cohn2021; @gutz2021; @smiljanic2021; @yi2021]. However, there is reason to believe that speakers may be subconsciously altering their speech style to accommodate while wearing masks, instinctively speaking louder and clearer to overcome the obstacle that masks have on conversation [@cohn2021].
+
+For people with Parkinson’s disease (PD), clear and loud speaking styles have been shown to be effective in improving speech intelligibility [@tjaden2014; @tjaden2013; @neel2009]. Clear and loud speaking styles improving speech for people wearing face masks and for people with PD suggests that people with PD who need to wear face masks might reduce the compounded impairment on their speech intelligibility by employing clear or loud speaking styles.
+
+## Acoustic outcomes of effortful speech styles and face masks in PD
+
+The present study builds on our previous report of acoustic effects of face masks and effortful speech styles in the same group of talkers [@knowles2023] as well as in younger talkers [@knowles2022]. Our previous work demonstrated that clear and loud speech styles lead to increases in high to low frequency energy in the speech spectrum, demonstrated by changes in spectral moments, spectral tilt as well as increases in energy in the 1 - 3 kHz range, and speech intensity. Face masks were shown to have an opposing effect, leading to decreases in all of these measures, though the relative effect sizes were smaller for masks compared to speech styles. These findings were consistent across speakers with and without PD [@knowles2022; @knowles2023]. The present work extends these study questions to changes in auditory-perceptual speech outcomes. To the authors' knowledge, no other research exists that reports the effects of face masks on clinical speaker populations. Given the continued use of face masks in health care settings (at the time of writing) that these individuals must access, a holistic understanding of potential communication challenges and remediation strategies is vital to ensure optimal clinical care. Furthermore, an understanding of the effects of acoustic filtration such as that imposed by face masks on on the speech of individuals with speech disorders offers a window into how changes to the speech signal contribute to a perceptual outcomes.
+
+## Summary and Purpose
+
+In summary, masks have been shown to impair speech intelligibility in large part due to attenuating frequencies above approximately 1kHz. This impairment on speech intelligibility is worse for people who suffer from dysarthria as a result of neurological disorders such as Parkinson’s disease, as they already experience reduced speech intelligibility. Fortunately, clear and loud speech styles have been shown to be effective in combating both the impairment imposed by masks and the impairment imposed by dysarthria.
+
+Our purpose with this study is twofold: first, to quantify the effects of face masks on speech intelligibility and perceived listener effort in talkers with and without PD, and second, to examine the effects of clear and loud speech on these perceptual outcomes in the context of face masks.
+
+Based on the previous literature regarding face masks, as well as our previous work on speech acoustics of masks and speech styles in PD, we predict the following.
+
+1. People with PD will be overall less intelligible and more effortful to understand than controls. This difference may or may not widen when face masks are worn.
+2. Habitual speech will be less intelligible and more effortful to understand than clear and loud speech. Based on previous literature, clear speech is predicted to be more intelligible and easier to understand than loud and habitual speech in both participant groups. This difference may or may not change when face masks are worn.
+3. Speech produced with KN95 masks will be overall less intelligible and more effortful to understand than speech without a mask. This difference may or may not change when speakers speak clearly and/or loudly.
+4. Acoustic measures found to be sensitive to the effects of masks and speech styles in younger talkers [@knowles2022] and older talkers with and without PD [@knowles2023] will be associated with changes in speech intelligibility. Specifically, we predict that higher speech intelligibility will be associated with increases in speech intensity, energy in the 1 - 3 kHz range, and spectral tilt.
+
+
+# Methods
+
+## Speech corpus
+
+Speaker participants and stimuli represent a subset of those reported in @knowles2023 and are reported in `r tbls("tab-demographics", display = "cite")`. Speaker participants comprised two groups: one group of 10 people with Parkinson's disorder (6 male, 4 female; mean age: 68), and one group of 10 older, healthy adults with no history of speech, language, hearing, or neurological concerns (6 male, 4 female; mean age: 65).
+
+<!-- TODO: include demographics table for PD speakers. -->
+`r tbls("tab-demographics", caption = "PLACEHOLDER - see original table from sim-prod and remove unused participants.")`
+
+Each participant read aloud six phonetically balanced lists of 10 sentences selected from the first 18 lists of the Harvard Sentence Corpus [@ieee1969]. One sentence list was used for each combination of two mask and three speech conditions. Mask conditions for the perceptual study included using a KN95 face mask and using no mask[^1], and speech conditions included habitual, clear, and loud speech.
+Participants always began with the habitual speech condition. The order of the clear and loud speech conditions was counterbalanced across talkers, and the order of the face masks was randomized within each speech condition for each participant. Instructions for the clear speech condition were “speak clearly by over-enunciating your speech, similar to how you might speak to someone who is having difficulty hearing you, or someone who is learning English and is having difficulty understanding you,” and instructions for loud speech were “speak at a volume that feels two times louder than your normal speaking voice.” Participants had the opportunity to practice each of the modified speech styles until they were ready to proceed with the experiment. They were not provided with feedback on their productions.
+Talkers were recorded at a six-foot distance from a Shure SM-58 microphone in order to mimic social distancing protocols.
+<!-- TK: calibration info: -->
+Prior to the experiment, a 1000 Hz tone of a fixed intensity was played in order to calibrate speech intensity off-line. A small loudspeaker was positioned under the speaker participant's chin and used to play a 1000 Hz tone at a fixed intensity. This tone was played and recorded three times. Real-time intensity was recorded using a sound level meter (Galaxy Audio CM-170) positioned adjacent to the microphone. The average intensity of this tone was used to adjust the intensity of the speech audio files for each speaker participant prior to including the audio in the listening experiment. Further details are described in [@knowles2023].
+
+[^1]: The original study also included a surgical mask which was excluded in the perceptual study. Previous findings have demonstrated that surgical masks impose relatively minimal challenges to speech intelligibility [CITE] and were found to be less acoustically detrimental to the speech signal compared to the KN95 mask [@knowles2023]. For simplicity, only the No Mask and KN95 mask conditions were included here.
+
+
+## Auditory-perceptual experiment
+
+### Stimulus preparation
+
+Audio files were then prepared for the listening portion of the experiment, which was hosted online via the Prolific crowd-sourcing platform  (www.prolific.co). Sentence boundaries were manually identified and automatically extracted in Praat [@praat]. The actual utterance intensity was then adjusted using the calibration factor described above in order to reflect the true speech intensity at which it was uttered.
+Calibrated sentence audio files were mixed with +5 dB signal-to-noise ratio of multi-talker background noise (a level chosen based on pilot testing) in order to limit ceiling and floor effects and mimic real-world speaking environments.
+Sentences with major hesitations, reading errors, or non-speech disruptions were discarded (n = 29).
+Each speaker contributed approximately 60 audio files: 10 sentences per condition combination across the two mask and three speech conditions.
+Speech stimuli were presented via a custom experiment written using jsPsych [@deleeuw2015] and hosted on Pavlovia (https://pavlovia.org/).
+
+### Listener participants
+
+In total, 233 listener participants were recruited. Listeners were excluded if they 1) reported a history of speech, language, or hearing concerns, 2) were not native North American English speakers, or 3) were not wearing headphones, as per self-report (n = 16). Additional listeners were excluded if they did not complete the experiment (n = 12) or if they fell below 2 standard deviations of the mean group accuracy in the perceptual outcomes (n = 13). A total of 192 listener participants were included in the final analyses. 
+
+Each listener heard audio files from a single talker (n = ~60 stimulus items) and each talker was heard by a minimum of nine listeners (maximum: 11) after exclusions were made, which reflects the industry standard for remote data collection [@byun2015].
+Listeners additionally heard 20% of items repeated for intra-rater reliability calculations. The experiment took approximately 20 - 30 minutes for listeners to complete.
+
+Following a brief practice period with a novel speaker, listeners were presented with each sentence and asked to 1) transcribe exactly what they heard and then 2) rate how effortful the speech was for them to understand using a visual analog scale with anchors "very easy to understand" and "very difficult to understand." Outcome measures included the proportion of keywords correctly transcribed and the effort rating expressed as a proportion along the visual scale. 
+Transcriptions were assessed using five target words from each sentence, selected for their grammatical prominence in the sentence. The accuracy of each transcription was graded on how many of the target words were included in the transcription. Prevalent homophones and common homophonic typographical errors were considered correct.
+
+## Statistical analyses
+
+Intra- and inter-rater reliability for accuracy and effort were measured using intraclass correlation coefficients [ICC; @koo2016]. Intra-rater reliability was assessed using a two-way mixed model (ICC 3, k)
+and inter-rater reliability was assessed using a two-way random model (ICC 2, k).
+
+To evaluate the relationship between the two perceptual measures, repeated measures correlation coefficients were calculated between listener accuracy and listener effort within each of the mask conditions using the `rmcorr` package [@rmcorr]. For this, the data were averaged across listeners, resulting in one data point per condition per speaker.
+
+We built two linear mixed effects models, one for each outcome, in order to quantify the effects of face masks and speech styles in accordance with our research questions. These models were built in the following way.
+Listener accuracy and effort were each logit-transformed and modeled as a function of speaker group, face mask, and speech style using linear mixed effects regression with the *lme4* package [@lme4] in R [@r2022]. Post-hoc pairwise comparisons were calculated using estimated marginal means [@emmeans] and p-values were adjusted using the Tukey method.
+
+Two linear mixed effects models were constructed, one for each outcome measure. Both included identical fixed effects structures. Fixed effects included speaker group, mask condition, speech condition, and all possible interactions. Random intercepts were included for listener participants, speaker participants, and sentence identifiers. Random by-speaker random slopes for both speech condition contrast levels were also included. Random slope terms for listener participants led to model non-convergence for intelligibility and were excluded, but were included in the effort model.
+
+Group and mask fixed effects terms were sum coded (OC = +1, PD = -1; NM = +1, KN95 = -1). Speech condition was coded using reverse helmert contrasts, resulting in two contrast levels (Habitual vs. Clear/Loud: Habitual = +2/3, Clear = -1/3, Loud = -1/3; Clear vs. Loud: Clear = +1/2, Loud = -1/2). The first contrast level permits the comparison of habitual speech to the average of clear and loud speech outcomes combined. The second contrast level compares clear to loud speech.
+In all cases, contrasts are coded such that each baseline (denoted on the left) is assigned a positive value. A positive model estimate, thus, indicates the baseline for that contrast resulted in a higher outcome than the comparison. For example, a positive estimate for OC vs. PD in the intelligibility model would indicate higher intelligibility ratings for PD. A negative estimate for the Clear vs. Loud contrast would indicate lower intelligibility outcomes for clear speech compared to loud speech.
+
+As a secondary analysis to address Research Question 4, we investigated the additive effect of three acoustic measures of spectral balance on speech intelligibility. This analysis was driven from the results of @knowles2023, which quantified the effects of face masks and effortful speech styles on acoustic outcomes in this sample. Details of the acoustic analysis are provided in @knowles2022 but are briefly summarized here. These included mean speech intensity, the mean energy in the 1-3 kHz spectral range, and the difference in energy between 0 - 1 kHz and 1 - 10 kHz (i.e., a measure of spectral tilt). In order to quantify their potential contributions to speech intelligibility, we added each of these measures as fixed effects to the intelligibility models one at time. For each acoustic measure, we performed Likelihood Ratio tests to determine whether any of the three acoustic measures significantly improved the model fit compared to the original model (i.e., without the acoustic variable), using a more conservative threshold of $p$ < 0.01. Acoustic measures that improved model fit were then iteratively added to a single model. Collinearity was assessed by examining variance inflation factors to ensure correlations between predictors remained acceptably low [i.e., < 5; @akinwande2015]. For simplicity's sake and given the exploratory nature of this approach, we limited this secondary analysis to the intelligibility outcomes only (i.e., not listener effort).
+
+# Results
+
+***FIGURE 1 APPROXIMATELY HERE***
+
+`r figs("fig-group",caption="Observed group means for each mask and speech style condition. Data have been averaged over listeners. Error bars represent standard error. Points represent individual data points, averaged over listeners.")`
+
+```{r fig-group}
+df_grouped <- df_grouped %>%
+  mutate(cond_mask = factor(cond_mask, levels = c("nm","kn")),
+         cond_speech = factor(cond_speech, levels = c("habitual","clear","loud")))
+  
+p1 <- df_grouped %>%
+    ggplot(aes(x = cond_mask,
+             y = prop_correct,
+             color = group,
+             group = group,
+             shape = group,
+             linetype = group)
+         )+
+  theme_bw(base_size = 18)+
+  stat_summary(data = df_grouped,
+               fun.data = mean_se, geom = "errorbar",
+               width = .25, linetype = "solid", size = 1)+
+    stat_summary(fun = mean, geom = "line")+
+    stat_summary(fun = mean, geom = "point",
+                 size = 3)+
+    ggbeeswarm::geom_beeswarm(data = df_grouped, 
+                            alpha = 0.2, dodge.width = 0.5)+
+    ylim(0,1)+
+  facet_grid(~cond_speech)+
+  labs(y = "Listener Accuracy\n(proportion correct)",
+       color = "Group",shape = "Group",
+       x = "Mask condition")+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,16),
+                       labels = c("Controls","PD"))+
+  scale_x_discrete(labels = c("No \nMask","KN95 \nMask"))+
+  theme(legend.position = "bottom",
+        legend.direction = "horizontal")+
+    guides(linetype = "none")
+
+p2 <- df_grouped %>%
+    ggplot(aes(x = cond_mask,
+             y = effort/100,
+             color = group,
+             group = group,
+             shape = group,
+             linetype = group)
+         )+
+  theme_bw(base_size = 18)+
+  stat_summary(data = df_grouped,
+               fun.data = mean_se, geom = "errorbar",
+               width = .25, linetype = "solid", size = 1)+
+    stat_summary(fun = mean, geom = "line")+
+    stat_summary(fun = mean, geom = "point",
+                 size = 3)+
+    ggbeeswarm::geom_beeswarm(data = df_grouped, 
+                            alpha = 0.2, dodge.width = 0.5)+
+    ylim(0,1)+
+  facet_grid(~cond_speech)+
+  labs(y = "Listener Effort\n(low to high effort)",
+       color = "Group",shape = "Group",
+       x = "Mask condition")+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,16),
+                       labels = c("Controls","PD"))+
+  scale_x_discrete(labels = c("No \nMask","KN95 \nMask"))+
+  theme(legend.position = "bottom",
+        legend.direction = "horizontal")+
+    guides(linetype = "none")
+
+fig1 <- cowplot::plot_grid(p1,p2)
+# ggsave(paste0(fig_path,"fig1.pdf"), height=7, width=10, units = "in", dpi="retina")
+```
+
+***FIGURE 2 APPROXIMATELY HERE***
+
+`r figs("figs-individuals",caption="Observed individual speaker means in each mask and speech style condition. Each line represents a given speaker. Means have been averaged over listeners and sentence lists.")`
+
+```{r figs-indivduals}
+# 1 point per speaker per condition
+
+# Intell
+p1_individ <- df_grouped_speakers %>%
+  # error in this speaker in loud_nm; remove for now
+  filter(!(speaker=="pd11" & cond_speech == "loud")) %>%
+  ggplot(aes(x = cond_mask,
+             y = prop_correct,
+             color = group,
+             group = speaker,
+             shape = cond_mask))+
+  #geom_boxplot()+
+  #ggbeeswarm::geom_quasirandom(width=.25)+
+  geom_point()+
+  geom_line()+
+  facet_grid(~cond_speech)+
+  theme_bw(base_size = 18)+
+  #labs(y = "Listener Accuracy (logit-transformed)")
+  labs(y = "Listener Accuracy\n(proportion correct)",
+       color = "Group", shape = "Face Mask \nCondition",
+       x = "Mask condition")+
+    guides(shape=FALSE)+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,17),
+                       labels = c("No \nMask", "KN95 \nMask"))+
+  scale_x_discrete(labels = c("No \nMask","KN95 \nMask"))+
+  theme(legend.position = "bottom",
+        legend.justification = 'center')+
+  ylim(0,1)
+
+# Effort
+p2_individ <- df_grouped_speakers %>%
+  # error in this speaker in loud_nm; remove for now
+  filter(!(speaker=="pd11" & cond_speech == "loud")) %>%
+  ggplot(aes(x = cond_mask,
+             y = prop_effort,
+             color = group,
+             group = speaker,
+             shape = cond_mask))+
+  geom_point()+
+  geom_line()+
+  facet_grid(~cond_speech)+
+  theme_bw(base_size = 18)+
+  labs(y = "Listener Effort\n(low to high)",
+       color = "Group", shape = "Face Mask \nCondition",
+       x = "Mask condition")+
+    guides(color=FALSE)+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,17),
+                       labels = c("No \nMask", "KN95 \nMask"))+
+  scale_x_discrete(labels = c("No \nMask","KN95 \nMask"))+
+  theme(legend.position = "bottom",
+        legend.title.align = 0.5,
+        legend.text.align = 0.5)+
+        #legend.title = element_text(size = 14),
+        #legend.text = element_text(size = 12))+
+  ylim(0,1)
+
+fig2 <- cowplot::plot_grid(p1_individ,p2_individ)
+# ggsave(paste0("figs/fig2_new.pdf"), height=7, width=10, units = "in", dpi="retina")
+```
+
+***FIGURE 3 APPROXIMATELY HERE***
+
+`r figs("figs-corrs",caption="Relationship between listener accuracy and listener effort for each mask condition, collapsed across speaker group and speech condition.")`
+```{r figs-corrs}
+# figs-asha3
+fig3 <- 
+  df %>%
+    group_by(speaker, group, cond_mask, cond_speech) %>%
+    summarize(prop_correct = mean(prop_correct),
+              effort = mean(effort)) %>%
+    mutate(cond_mask = case_when(cond_mask=="nm" ~ "No Mask",
+                     cond_mask=="kn" ~ "KN95 Mask")) %>%
+    mutate(cond_mask = factor(cond_mask, levels = c("No Mask", "KN95 Mask"))) %>%
+  ggplot(aes(x = prop_correct, y = effort/100, color = group, shape = cond_mask))+
+  geom_point(size = 5)+
+    geom_smooth(method="lm")+
+  theme_bw(base_size = 18)+
+  labs(y = "Listener Effort\n(low to high)",
+       color = "Group", shape = "Face Mask Condition",
+       x = "Listener Accuracy\n(proportion correct)")+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,17),
+                       labels = c("No Mask", "KN95 Mask"))+
+  theme(legend.position = "bottom")+
+    facet_grid(~cond_mask)+
+  ylim(0,1)+xlim(0,1)
+#fig3
+#ggsave(paste0(fig_path,"fig3.pdf"), height=7, width=10, units = "in", dpi="retina")
+
+##tjmisc::ggpreview(height=7, width=10, units="in",device="pdf")
+#ggsave(paste0(fig_path,fig_name), height=10, width=12, units = "in", dpi="retina")
+
+
+```
+
+
+
+
+`r tbls("tab-coefs",caption="Model results for speech intelligibility and listener effort. Outcome variables have been logit-transformed.")`
+
+```{r tab-coefs}
+tbl_name <- "tbl2-coefs.html"
+
+coef_labels <- c(
+  '(Intercept)' = 'Intercept',
+  'groupOC vs PD' = 'Group: OC vs. PD',
+  'cond_maskNM vs KN' = 'Mask: NM vs. KN',
+  'cond_speechHabit vs Clear/Loud' = 'Speech: H vs. C&L',
+  'cond_speechClear vs Loud' = 'Speech: C vs. L',
+  'groupOC vs PD:cond_maskNM vs KN' = '[Group: OC vs. PD] x [Mask: NM vs. KN]',
+  'groupOC vs PD:cond_speechHabit vs Clear/Loud' = '[Group: OC vs. PD] x [Speech: H vs. C&L]',
+  'groupOC vs PD:cond_speechClear vs Loud' = '[Group: OC vs. PD] x [Speech: C vs. L]',
+  'cond_maskNM vs KN:cond_speechHabit vs Clear/Loud' = '[Mask: NM vs. KN] x [Speech: H vs. C&L]',
+  'cond_maskNM vs KN:cond_speechClear vs Loud'  = '[Mask: NM vs. KN] x [Speech: C vs. L]',
+  'groupOC vs PD:cond_maskNM vs KN:cond_speechHabit vs Clear/Loud'  = '[Group: OC vs. PD] x [Mask: NM vs. KN] x [Speech: H vs. C&L]',
+  'groupOC vs PD:cond_maskNM vs KN:cond_speechClear vs Loud' = '[Group: OC vs. PD] x [Mask: NM vs. KN] x [Speech: C vs. L]'
+)
+
+
+sjPlot::tab_model(mod_i, mod_e,
+                  df.method = "satterthwaite",
+                  dv.labels = c("Listener Accuracy", "Listener Effort"),
+                  pred.labels = coef_labels,
+                  #auto.label = TRUE#,
+                  file=paste0(tbl_path,tbl_name)
+                  )
+```
+
+
+Results are reported in `r tbls("tab-coefs", display = "cite")` and Figures 1 - 3.
+Across all listeners, intra-rater reliability indicated *moderate* agreement for both accuracy (mean ICC: `r round(mean(df_icc_intra_acc$ICC),3)`) and effort [mean ICC: `r round(mean(df_icc_intra_eff$ICC),3)`; @koo2016].
+Across all speaker playlists, inter-rater reliability was found to be good for both outcomes
+(mean ICC, accuracy: `r round(mean(df_icc_inter_acc$ICC),3)`;
+mean ICC, effort: `r round(mean(df_icc_inter_eff$ICC),3)`).
+
+Listener accuracy and effort were found to be strongly correlated with each other across all conditions
+(repeated measures correlation coefficient $r$: `r round(corr_ie_all$r, 3)`, $CI$ = `r corr_ie_all$CI`; $p$ `r thear::report_p(corr_ie_all$p)`).
+This relationship was stronger within the KN95 mask condition
+(repeated measures correlation coefficient $r$: `r round(corr_ie_kn$r, 3)`, $CI$ = `r corr_ie_kn$CI`; $p$ `r thear::report_p(corr_ie_kn$p)`) compared to within the No Mask condition
+(repeated measures correlation coefficient $r$: `r round(corr_ie_nm$r, 3)`, $CI$ = `r corr_ie_nm$CI`; $p$ `r thear::report_p(corr_ie_nm$p)`).
+
+## Main effects of group, mask, and speech style
+
+Overall, listeners were less accurate and reported greater listening effort for the PD talkers compared to controls (main effect of Group for
+accuracy: $\hat{\beta}$ = `r intellB['Group',1]`, $p$ `r report_p(intellP['Group',1])`;
+effort: $\hat{\beta}$ = `r effortB['Group',1]`, $p$ `r report_p(effortP['Group',1])`
+),
+and when talkers spoke with a mask on compared to without (
+main effect of Mask for
+accuracy: $\hat{\beta}$ = `r intellB['Mask',1]`, $p$ `r report_p(intellP['Mask',1])`;
+effort: $\hat{\beta}$ = `r effortB['Mask',1]`, $p$ `r report_p(effortP['Mask',1])`
+).
+
+
+When talkers spoke in their habitual speaking styles, listeners were less accurate and reported more effort compared to clear and loud speech combined (
+accuracy: $\hat{\beta}$ = `r intellB['Speech_HvCL',1]`, $p$ `r report_p(intellP['Speech_HvCL',1])`;
+effort: $\hat{\beta}$ = `r effortB['Speech_HvCL',1]`, $p$ `r report_p(effortP['Speech_HvCL',1])`
+).
+
+Clear speech was less effortful than loud speech for listeners to understand (
+$\hat{\beta}$ = `r effortB['Speech_CvL',1]`, $p$ `r report_p(effortP['Speech_CvL',1])`
+),
+but there was no statistically significant difference in accuracy between the two altered speech styles (
+$\hat{\beta}$ = `r intellB['Speech_CvL',1]`, $p$ `r report_p(intellP['Speech_CvL',1])`
+).
+
+## Interactions with speaker group and mask
+
+```{r include = FALSE}
+sjPlot::tab_model(mod_i, mod_e)
+
+# 2-way interactions group x speech
+# intell
+emmeans::emmip(mod_i, group ~ cond_speech,
+               tran = "logit",
+               type = "response",
+               bias.adj = TRUE, sigma = sigma_i, # required if we wish to interpret the predicted values as proportions
+               CIs = TRUE, dodge = FALSE)
+
+# effort: 
+emmeans::emmip(mod_e, group ~ cond_speech,
+               tran = "logit",
+               type = "response",
+               bias.adj = TRUE, sigma = sigma_e,# required if we wish to interpret the predicted values as proportions
+               CIs = TRUE, dodge = FALSE)
+
+# group x mask
+emmeans::emmip(mod_i, group ~ cond_mask,
+               tran = "logit",
+               type = "response",
+               bias.adj = TRUE, sigma = sigma_i, # required if we wish to interpret the predicted values as proportions
+               CIs = TRUE, dodge = FALSE)+
+  ylim(0.3,0.9)
+
+# effort: 
+emmeans::emmip(mod_e, group ~ cond_mask,
+               tran = "logit",
+               type = "response",
+               bias.adj = TRUE, sigma = sigma_e,# required if we wish to interpret the predicted values as proportions
+               CIs = TRUE, dodge = FALSE)
+
+```
+
+```{r include = FALSE}
+emm_mask_i$contrasts %>%
+  as.data.frame() %>% 
+  select(group,everything(),-df) %>%
+  mutate_if(is.numeric,round,3) %>%
+  flextable::flextable() %>% bold(~p.value < 0.05,'p.value')
+
+emm_mask_i$emmeans %>%
+  as.data.frame() %>%
+  select(group,everything(),-df) %>%
+  mutate_if(is.numeric,round,3)
+
+emm_mask_e$contrasts %>%
+  as.data.frame() %>% 
+  select(group,everything(),-df) %>%
+  mutate_if(is.numeric,round,3) %>%
+  flextable::flextable() %>% bold(~p.value < 0.05,'p.value')
+
+emm_mask_e$emmeans %>%
+  as.data.frame() %>%
+  select(group,everything(),-df) %>%
+  mutate_if(is.numeric,round,3)
+```
+
+
+Talkers with PD were even more disadvantaged than controls when wearing masks, which was found as two-way interactions between Speaker Group and Mask for both accuracy and effort. That is, listeners were even less accurate and reported greater effort when listening to PD talkers in masks (
+accuracy: $\hat{\beta}$ = `r intellB['Group_Mask',1]`, $p$ `r report_p(intellP['Group_Mask',1])`;
+effort: $\hat{\beta}$ = `r effortB['Group_Mask',1]`, $p$ `r report_p(effortP['Group_Mask',1])`
+).
+Furthermore, talkers with PD did not gain as much in clear speech (compared to loud speech) when wearing masks, a finding captured by the three-way interaction for accuracy between Group, Mask, and Speech Style for 
+Habitual versus Clear and Loud speech (
+$\hat{\beta}$ = `r intellB['Group_Mask_Speech_HvCL',1]`, $p$ `r report_p(intellP['Group_Mask_Speech_HvCL',1])`
+) and
+Clear versus Loud speech (
+$\hat{\beta}$ = `r intellB['Group_Mask_Speech_CvL',1]`, $p$ `r report_p(intellP['Group_Mask_Speech_CvL',1])`
+). No three-way interactions were found for listener effort, however, indicating that this asymmetry in the ability to understand talkers with PD may not have been perceived as more difficult, even if listeners were less successful overall.
+
+To determine whether the KN95 mask led to consistently poorer perceptual outcomes, post-hoc pairwise comparisons tested the difference in listener accuracy between the mask conditions for each group and speech style. In all cases, the KN95 masks were associated with significantly lower speech intelligibility and higher listener effort across the board ($p$ < 0.001 for most comparisons). Greater declines from the KN95 mask were observed for the PD group compared to controls, as evidenced by higher odds ratios. These differences can be observed in `r figs("fig-group", display = "cite")` and `r tbls("tab-emm-mask",display="cite")`. Due to the strong relationship between listener accuracy and effort and in order to limit the number of post-hoc tests, listener effort was not included in these pairwise comparisons.
+
+`r tbls("tab-emm-mask",caption="Pairwise comparisons for differences in listener accuracy between no mask and KN95 masks for each speaker group and speech condition. OC = older controls; PD = Parkinson's disease; nm = No Mask; kn = KN95 mask; SE = standard error.")`
+
+```{r tab-emm-mask}
+# Difference between masks within speech conditions
+ft_emm_mask <- emm_mask_i$contrasts %>%
+  as.data.frame() %>% 
+  mutate(Outcome = "Listener accuracy") %>%
+  select(group,everything(),-df, -null, -Outcome) %>%
+  mutate_if(is.numeric,round,3) %>%
+  rename("Group" = "group",
+         "Contrast" = "contrast",
+         "Speech style" = "cond_speech",
+         "Odds Ratio" = "odds.ratio") %>%
+  mutate(
+    Contrast = str_replace_all(Contrast,
+                               "nm","No Mask"),
+    Contrast = str_replace_all(Contrast,
+                               "kn","KN95"),
+    Group = case_when(
+      Group == "oc"~"OC",
+      Group == "pd"~"PD") 
+    ) %>%
+  mutate(p.value = ifelse(p.value==0.000,"<0.001",p.value)) %>%
+  flextable::flextable() %>% bold(~p.value < 0.05,'p.value') %>%
+  #merge_v(j = "Outcome", part = "body", combine = FALSE) %>%
+  merge_v(j = "Group", part = "body", combine = FALSE)
+
+ft_emm_mask
+
+tbl_name = "tbl3-emm-mask.docx"
+# Syntax for flextables:
+# flextable::save_as_docx(NAME, path = paste0(tbl_path, tbl_name))
+
+# emm_mask_e$contrasts %>%
+#   as.data.frame() %>% 
+#   mutate(Outcome = "Listener effort") %>%
+#   select(Outcome, group,everything(),-df,-null) %>%
+#   mutate_if(is.numeric,round,3) %>%
+#   flextable::flextable() %>% bold(~p.value < 0.05,'p.value') %>%
+#   merge_v(j = "Outcome", part = "body", combine = FALSE) %>%
+#   merge_v(j = "group", part = "body", combine = FALSE)
+```
+
+
+`r tbls("tab-emm-speech",caption="Pairwise comparisons for differences in listener accuracy between speech styles for each speaker group and face mask condition. Bolded p.values reflect p < .05. OC = older controls; PD = Parkinson's disease")`
+
+```{r tab-emm-speech-i}
+# Difference between speech conditions within masks
+ft_emm_speech <- emm_speech_i$contrasts %>%
+  as.data.frame() %>% 
+  select(group,everything(),-df,-null) %>%
+  mutate_if(is.numeric,round,3) %>%
+  rename("Group" = "group",
+         "Contrast" = "contrast",
+         "Mask" = "cond_mask",
+         "Odds Ratio" = "odds.ratio") %>%
+  mutate(
+    Mask = case_when(
+      Mask == "nm" ~ "No Mask",
+      Mask == "kn" ~ "KN95"),
+    Group = case_when(
+      Group == "oc"~"OC",
+      Group == "pd"~"PD")
+    ) %>%
+  mutate(p.value = ifelse(p.value==0.000,"<.001",p.value)) %>%
+  flextable::flextable() %>% bold(~p.value < 0.05,'p.value') %>%
+  merge_v(j = "Group", part = "body", combine = FALSE)
+
+ft_emm_speech
+
+tbl_name = "tbl4-emm-speech.docx"
+# Syntax for flextables:
+# flextable::save_as_docx(ft_emm_speech, path = paste0(tbl_path, tbl_name))
+```
+
+
+```{r emm-speech-means}
+means_i_tbl <- df_grouped_conditions %>%
+  mutate(response = prop_correct) %>%
+  select(-effort, -prop_correct) %>%
+  mutate_if(is.numeric,round,2) %>%
+  mutate_if(is.numeric,scales::percent) %>%
+  mutate(id = paste(group,cond_mask,cond_speech,sep="_")) 
+
+means_i <- means_i_tbl%>%
+  split(.$id)
+#report as: means_i$pd_nm_loud$response
+
+means_e_tbl <- df_grouped_conditions %>%
+  mutate(response = effort/100) %>%
+  select(-effort, -prop_correct) %>%
+  mutate_if(is.numeric,round,2) %>%
+  mutate_if(is.numeric,scales::percent) %>%
+  mutate(id = paste(group,cond_mask,cond_speech,sep="_")) 
+
+emmi <- emm_speech_i$contrasts %>%
+  as.data.frame() %>%
+  select(group,everything(),-df) %>%
+  mutate_if(is.numeric,round,3) %>%
+  mutate(id = paste(group,cond_mask,contrast,sep="_")) %>%
+  mutate(id = str_replace_all(id, " / ","_")) %>%
+  split(.$id)
+#report as: emmi$pd_nm_clear_loud$odds.ratio or $p.value
+```
+
+```{r tab-emm-speech-e, include = FALSE}
+emm_speech_e$contrasts %>%
+  as.data.frame() %>% 
+  select(group,everything(),-df) %>%
+  mutate_if(is.numeric,round,3) %>%
+  flextable::flextable() %>% bold(~p.value < 0.05,'p.value')
+```
+
+In order to determine whether the intelligibility advantages of using effortful speech persisted when speakers wore masks, a second set of post-hoc comparisons was run (`r tbls("tab-emm-speech-i", display = "cite")`). These comparisons tested the difference between each speech style for each speaker group and mask condition. P-values were adjusted using the bonferroni method for 3 tests.
+In general, both groups were most intelligible when using clear speech without a mask (PD: `r means_i$pd_nm_clear$response`; OC: `r means_i$oc_nm_clear$response`) and least intelligible when using habitual speech with a KN95 mask (PD: `r means_i$pd_kn_habitual$response`; OC: `r means_i$oc_kn_habitual$response`). For the control group, the only statistically significant comparison was clear versus habitual speech without a mask (odds ratio = `r emmi$oc_nm_habitual_clear$odds.ratio`, $p$ = `r emmi$oc_nm_habitual_clear$p.value`). No other comparisons reached significance for the controls, suggesting limited differences in listener accuracy regardless of speech style with or without a mask. For the PD group, however, nearly all comparisons were significantly different, demonstrating that even when wearing a face mask, clear and loud speech styles resulted in higher listener accuracy than with a habitual speech style. Without a mask, clear speech also offered an advantage over loud speech (odds ratio = `r emmi$pd_nm_clear_loud$odds.ratio`, $p$ `r emmi$pd_nm_clear_loud$p.value`) but with a mask, this difference disappeared (odds ratio = `r emmi$pd_kn_clear_loud$odds.ratio`, $p$ = `r emmi$pd_kn_clear_loud$p.value`).
+
+These findings suggest that although wearing a face mask reduces the effectiveness of effortful speech styles for people with PD, using clear or loud speech with a mask on still results in better speech intelligibility than not making any adjustments at all.
+
+These patterns are visible in `r figs("fig-group", display = "cite")`, in which PD talkers show a steeper decline in intelligibility as a result of masks when using habitual and clear speaking styles. This pattern is visibily similar but not as extreme for listener effort.
+
+This finding was also supported by a two-way interaction between Mask and Speech Style, pictured in `r figs("fig-group",display="cite")`, which demonstrated that the clear speech benefit was attenuated by masks for both accuracy (
+habitual versus clear/loud: $\hat{\beta}$ = `r intellB['Mask_Speech_HvCL',1]`, $p$ `r report_p(intellP['Mask_Speech_HvCL',1])`;
+clear versus loud: $\hat{\beta}$ = `r intellB['Mask_Speech_HvCL',1]`, $p$ `r report_p(intellP['Mask_Speech_HvCL',1])`
+) and for effort (
+habitual versus clear/loud: $\hat{\beta}$ = `r effortB['Mask_Speech_HvCL',1]`, $p$ `r report_p(effortP['Mask_Speech_HvCL',1])`;
+clear versus loud: $\hat{\beta}$ = `r effortB['Mask_Speech_CvL',1]`, $p$ `r report_p(effortP['Mask_Speech_CvL',1])`
+).
+In summary, clear speech was most easily and more accurately understood without a mask, but loud and clear were similarly understood when speakers wore a mask.
+
+
+## Potential acoustic contributors to intelligibility in masks
+
+In our previous paper involving these same speaker participants, we investigated the combined effects of face masks and effortful speech from this same data set on three acoustic outcomes of spectral balance: mean speech intensity, the mean energy in the 1-3 kHz spectral range, and the difference in energy between 0 - 1 kHz [@knowles2023]. Each of these were added to the intelligibility model in the current study one at a time and evaluated using Likelihood Ratio tests. Two of the three measures were found to improve model fit compared to the original model at $p$ < 0.01, with spectral tilt yielding the lowest BIC, followed by intensity
+(tilt: $\chi^2$ = `r lrt_tilt$chisq[2]`, $p$  = `r thear::report_p(lrt_tilt$pr_chisq[2])`;
+intensity: $\chi^2$ = `r lrt_int$chisq[2]`, $p$  = `r thear::report_p(lrt_int$pr_chisq[2])`).
+Mid-range frequency energy was not found to improve model fit at $p$ < 0.01
+($\chi^2$ = `r lrt_mid$chisq[2]`, $p$  = `r thear::report_p(lrt_mid$pr_chisq[2])`).
+
+The model including spectral tilt was then rerun with intensity as a predictor. Intensity again was found to improve model fit
+($\chi^2$ = `r lrt_tilt_int$chisq[2]`, $p$  = `r thear::report_p(lrt_tilt_int$pr_chisq[2])`).
+Variance inflation factors for all predictors were below 2, suggesting acceptably low collinearity.
+
+The final model suggested that more positive spectral tilt was associated with higher speech intelligibility.
+($\hat{\beta}$ = `r coefs_i_a['tilt','Estimate']`,
+$p$ = `r thear::report_p(coefs_i_a['tilt','p'])`),
+while, with all other predictors controlled for, overall higher speech intensity was associated with *lower* speech intelligibility
+($\hat{\beta}$ = `r coefs_i_a['intensity','Estimate']`,
+$p$ = `r thear::report_p(coefs_i_a['intensity','p'])`).
+These results are illustrated in `r figs("fig-acoustics-intelligibility", display = "cite")`.
+
+***FIGURE 4 APPROXIMATELY HERE***
+
+`r figs("fig-acoustics-intelligibility",caption="Relationship between listener accuracy and each of the three acoustic measures from Knowles et al., in press: spectral tilt, speech intensity, and mean energy in the 1 - 3 kHz range.")`
+
+```{r acoustics-intelligibility}
+df_grouped <- df_grouped %>%
+  mutate(group = toupper(group))
+
+p_int <- df_grouped %>%
+  ggplot(aes(x = int_corrected,
+             y=prop_correct,
+             color=group, linetype = cond_mask))+
+  ylim(c(0,1))+
+  geom_point(color="lightgrey") +
+  geom_smooth(method="lm")+
+  facet_grid(cond_speech~group)+
+  theme_bw()+
+  labs(x = "Utterance intensity (dB)",
+       y = "Listener Accuracy\n(proportion correct)",
+       color = "Group",shape = "Group", linetype = "Mask condition")+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,16),
+                       labels = c("Controls","PD"))+
+  scale_linetype_discrete(labels = c("No \nMask","KN95 \nMask"))+
+  theme(legend.position = "bottom",
+        legend.direction = "vertical")
+
+p_legend <- cowplot::get_legend(p_int)
+p_int <- p_int + theme(legend.position = "blank")
+
+p_tilt <- df_grouped %>%
+  ggplot(aes(x = tilt,
+             y=prop_correct,
+             color=group, linetype = cond_mask))+
+  ylim(c(0,1))+
+  geom_point(color="lightgrey") +
+  geom_smooth(method="lm")+
+  facet_grid(cond_speech~group)+
+  theme_bw()+
+  labs(x = "Spectral tilt (dB)",
+       y = "Listener Accuracy\n(proportion correct)",
+       color = "Group",shape = "Group", linetype = "Mask condition")+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,16),
+                       labels = c("Controls","PD"))+
+  scale_linetype_discrete(labels = c("No \nMask","KN95 \nMask"))+
+  theme(legend.position = "blank")
+
+p_mid <- df_grouped %>%
+  ggplot(aes(x = mid_1_3k,
+             y=prop_correct,
+             color=group, linetype = cond_mask))+
+  ylim(c(0,1))+
+  geom_point(color="lightgrey") +
+  geom_smooth(method="lm")+
+  facet_grid(cond_speech~group)+
+  theme_bw()+
+  labs(x = "Max energy in 1-3 kHz",
+       y = "Listener Accuracy\n(proportion correct)",
+       color = "Group",shape = "Group", linetype = "Mask condition")+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,16),
+                       labels = c("Controls","PD"))+
+  scale_linetype_discrete(labels = c("No \nMask","KN95 \nMask"))+ 
+  theme(legend.position = "blank")
+
+
+
+plot_grid(p_tilt,p_int,p_mid,
+          nrow = 1, rel_widths = c(.8,1,.8))
+
+plot_grid(p_legend)
+
+# ggsave(paste0(fig_path,"fig4_new.pdf"), height=7, width=10, units = "in", dpi="retina")
+
+##tjmisc::ggpreview(width=30, units="in",device="pdf")
+#ggsave(paste0(fig_path,fig_name), width=10, units = "in", dpi=300)
+```
+
+
+```{r acoustics-effort, include = FALSE}
+df_grouped %>%
+  ggplot(aes(x = int_corrected,
+             y=prop_effort,
+             color=group, linetype = cond_mask))+
+  ylim(c(0,1))+
+  geom_point(color="lightgrey") +
+  geom_smooth(method="lm")+
+  facet_grid(cond_speech~group)+
+  theme_bw()+
+  labs(x = "Utterance intensity (dB)",
+       y = "Listener Effort\n(higher = more effort)",
+       color = "Group",shape = "Group", linetype = "Mask condition")+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,16),
+                       labels = c("Controls","PD"))+
+  scale_linetype_discrete(labels = c("No \nMask","KN95 \nMask"))+
+  theme(legend.position = "bottom",
+        legend.direction = "vertical")
+
+
+df_grouped %>%
+  ggplot(aes(x = tilt,
+             y=prop_effort,
+             color=group, linetype = cond_mask))+
+  ylim(c(0,1))+
+  geom_point(color="lightgrey") +
+  geom_smooth(method="lm")+
+  facet_grid(cond_speech~group)+
+  theme_bw()+
+  labs(x = "Spectral tilt (dB)",
+       y = "Listener Effort",
+       color = "Group",shape = "Group", linetype = "Mask condition")+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,16),
+                       labels = c("Controls","PD"))+
+  scale_linetype_discrete(labels = c("No \nMask","KN95 \nMask"))+
+  theme(legend.position = "blank")
+
+df_grouped %>%
+  ggplot(aes(x = mid_1_3k,
+             y=prop_effort,
+             color=group, linetype = cond_mask))+
+  ylim(c(0,1))+
+  geom_point(color="lightgrey") +
+  geom_smooth(method="lm")+
+  facet_grid(cond_speech~group)+
+  theme_bw()+
+  labs(x = "Max energy in 1-3 kHz",
+       y = "Listener Effort",
+       color = "Group",shape = "Group", linetype = "Mask condition")+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,16),
+                       labels = c("Controls","PD"))+
+  scale_linetype_discrete(labels = c("No \nMask","KN95 \nMask"))+ 
+  theme(legend.position = "blank")
+
+
+```
+
+
+```{r tiltxint, include = FALSE}
+df_grouped %>%
+  ggplot(aes(x = int_corrected,
+             y = tilt,
+             color=group, linetype = cond_mask))+
+  #ylim(c(0,1))+
+  geom_point(color="lightgrey") +
+  geom_smooth(method="lm")+
+  facet_grid(cond_speech~group)+
+  theme_bw()+
+  labs(x = "Utterance intensity (dB)",
+       y = "Spectral tilt (dB)",
+       color = "Group",shape = "Group", linetype = "Mask condition")+
+    scale_color_manual(values = group_colors,
+                       labels = c("Controls","PD"))+
+    scale_shape_manual(values = c(15,16),
+                       labels = c("Controls","PD"))+
+  scale_linetype_discrete(labels = c("No \nMask","KN95 \nMask"))+
+  theme(legend.position = "bottom",
+        legend.direction = "vertical")
+```
+
+```{r descriptive-stats, include = FALSE}
+
+Rmisc::summarySE(df_grouped,
+                 measurevar = "prop_correct",
+                 groupvars = c("group","cond_speech","cond_mask"),
+                 na.rm = TRUE) %>%
+  filter(group=="PD") %>%
+  flextable::flextable()
+
+# PD,nm:
+#   habitual --> clear: 64 --> 78 = 14 pts
+#   habitual --> loud: 64 --> 73 = 9 pts
+# PD, kn:
+#   habitual --> clear: 47 --> 60
+#   habitual --> loud: 47 --> 
+```
+
+
+# Discussion
+
+The present study provides support for a growing body of evidence that clear and loud speaking styles are useful in accommodating for the low-pass filtering effect of face masks. Consistent with previous literature, speakers in this study were less intelligible when wearing face masks [@cohn2021; @toscano2021]. The use of effortful speech styles enhanced speech intelligibility compared to habitual speech, partially compensating for the effect of the masks, as has been previously demonstrated [@smiljanic2021masks; @gutz2021; @gutz2022]. The present study demonstrated that this was true was true for individuals with hypokinetic dysarthria secondary to PD as well as age and gender matched controls. An important secondary finding was that the clear speech advantage over loud speech was not present when speakers wore masks.
+That is, without masks, listeners were most accurate in understanding clear speech, followed by loud speech, and this difference was found to be statistically significant.
+*With* face masks, though, intelligibility of clear and loud did not significantly differ, though both were more intelligible than habitual speech.
+Functionally, this suggests that while effortful speech styles are effective in, at least in part, compensating for the intelligibility loss from face masks, the effectiveness of clear speech is reduced with a mask on. The clinical implications of this are discussed below.
+
+These findings are, for the most part, consistent with our previous work which demonstrated that the acoustic attentuation of KN95 masks is parallel across habitual, clear, and loud speech styles for these same speakers [@knowles2023] as well as with previous literature [@knowles2022; @gutz2021; @gutz2022]. In our previous paper, we demonstrated that loud followed by clear speech provided a greater increase in speech intensity, spectral tilt, and mid-range frequency energy compared to habitual speech, and this finding held with and without the presence of face masks. While that study found a hierarchy of loud > clear > habitual speech with regards to increases in spectral balance measures, this study found a hierarchy of clear > loud > habitual speech for intelligibility without a mask and [clear = loud] > habitual with a mask.
+
+Previous research on speech intelligibility in PD suggests that clear, followed by loud speech styles yield higher speech intelligibility [@tjaden2014]. The results of the present study support this finding without a mask, but this pattern disappeared with a mask. This discrepancy could be related to the acoustic differences in clear and loud speech. Clear speech is characterized by slower, louder, hyperarticulated speech which leads to changes such as increased vowel distinctiveness. Acoustically, this results in, among other features, increased spectral energy in canonical vowel formant frequency bands. This increased acoustic salience in these critical frequency regions is damped by the attenuation profiles of face masks. Therefore, the clear speech benefit driven by increased energy in this range fails to be maintained when a mask is worn. This is consistent with findings from @neel2009, who found that while 1/3 to 1/2 of improvements in intelligibility in loud speech could be attributed to increases in SNR, changes in spectral tilt or fundamental frequency were likely also contributors.
+
+We entered the three primary acoustic metrics from @knowles2023 into our present model of speech intelligibility and found that, consistent with our expectations, flatter spectral tilt was associated with improvements in speech intelligibility. That is, a higher relative concentration of high to low frequency energy (0 - 1 kHz vs 1 - 10 kHz) across the speech spectrum was associated with speech that was more accurately understood by listeners.
+The relative size of this effect, however, compared to the effect size of masks and effortful speech styles, was quite small - 
+$\hat{\beta}$ = `r coefs_i_a['tilt','Estimate']` compared to, for example, the main effect of
+Group ($\hat{\beta}$ = `r coefs_i_a['Group','Estimate']`),
+Mask ($\hat{\beta}$ = `r coefs_i_a['Mask','Estimate']`),
+or Effortful Speech (Habitual vs. Clear and Loud: $\hat{\beta}$ = `r coefs_i_a['Speech_HvCL','Estimate']`.
+Furthermore, the overall explanatory power of the model (conditional r^2) was low (48.6%), with the fixed effects only accounting for 12.3% of the change in intelligibility (marginal r^2). This suggests additional factors not presently included may have been stronger predictors of speech intelligibility and likely also of listener effort.
+<!-- talking about low r2 values-->
+<!-- >> Example wording from wiltshire2021: "The overall model predicting duration had a total ex-planatory power (conditionalR2) of 94.37%, in which the fixed effects explained 56.79% of the variance (marginalR2)." -->
+
+The outcome of the acoustic additions to the model yielded two *unexpected* findings as well. First, given previous literature on acoustic predictors of the clear speech benefit [@smiljanic2021; @gilbert2014; @hazan2018; @hazan2011; @krause2004; @krause2009], we expected the inclusion of acoustic energy in the 1 - 3 kHz range to improve our model's predictive power. It did not: only spectral tilt and speech intensity improved the model fit. It is possible that attenuation in this same range imposed by the KN95 mask reduces the effectiveness of this component of the signal and that higher frequency information (which here was captured by spectral tilt) is more important to the listener in recuperating the overall speech signal. While we did not look at interactions with these acoustic measures, it is evident from `r figs("fig-acoustics", display = "cite")` that there was considerable variability in the relationship between speech intelligiblity and mean energy between 1 - 3 kHz across speaker groups and speech conditions, underscoring a need for more research in this area. @gutz2022 found that KN95 masks provided the greatest amount of attenuation to the acoustic signal above 2.5 kHz and 4 khZ. A measure of spectral tilt that captured a wider low-frequency band contribution, such as 0 - 4 kHz instead of the 0 - 1 kHz as used here,  may be more sensitive to changes in intelligibility due to masks.
+
+Another surprising finding was that while including speech intensity improved the model's predictive power, the direction of this effect was in the opposite direction as expected. Higher speech intensity was actually associated with *poorer* speech intelligibility when spectral tilt was controlled, though again the relative size of this effect was small ($\hat{\beta}$ = `r coefs_i_a['intensity','Estimate']`). That is, while better spectral tilt (i.e., balance), which is often a consequence of louder, more effortful speech [@fant1960; @ternstrom2006], benefited speakers' ability to be understood, simply increasing their speech intensity actually made understanding more difficult. Trends visible in `r figs("fig-acoustics", display = "cite")` suggest that this pattern for intensity was most evident for talkers with PD rather than controls; in fact, controls showed little to no relationship betweent intensity and intelligibility. On the other hand, the trend for intelligibility to increase with spectral tilt was consistent across both speaker groups.
+
+Further research is required to understand the nuanced relationships between speech intensity, measures of spectral balance, and the filtering effects of the barriers imposed by face masks and how these impact a listeners' ability to retrieve the signal. It is possible that when a person increases their speech volume, additional distortions that affect prosody, voice quality, or articulation are introduced. While these may not pose substantial difficulty when a speaker is maskless, these distortions could be compounded by the low frequency attenuation of a mask, leading to greater difficulty for the listener. @neel2009 found that while increased intesntiy *was* associated with increased intelligibility in talkers with PD in loud speech, other phonatory and articulatory changes also contributed. The present study's findings suggest that the relative contribution of acoustic factors in intelligibility for talkers with PD may change when face masks are worn.
+
+It is worth noting that our findings of speech intelligibility and listener effort were in the context of background noise. While we did not test intelligibility in quiet, previous work has demonstrated that many face masks typically pose little if any burden to intelligibility in optimal, quiet listening conditions  [@brown2021; @carraturo2021]. Whether this is the case for speakers with speech disorders is not known.
+
+
+## Clinical implications
+
+The results of this study suggest that speaking clearly or loudly can help overcome intelligiblity challenges imposed by face masks in people with and without PD. Clinically this is relevant as masks continue to be required in many healthcare settings, and our results also demonstrate that speech in people with PD is disproportionately affected with a mask on. For talkers with PD, speaking effortfully with a mask was better than using habitual speech, but brought their intelligibility down to similar levels to their habitual, unmasked speech. That is, the face masks effectively eliminated the intelligibility benefits they derived from clear and loud speech strategies. What this implies from a clinical perspective, is that behavioral speech strategies may be ineffective alone in overcoming challenges posed by masks, especially for people with lower baseline intelligibilty. These individuals will likely require additional measures in place to maximize their ability to communicate in these settings. Examples of this might include environmental modifications, such as taking efforts to reduce background noise, listener modifications, ensuring the listener is attending to the person speaking, or augmentative options, such as exploring the use of a speech amplification device.
+
+## Limitations
+Trying to emulate naturalistic speech in a controlled environment carries trade-offs. Most notably, while the Harvard sentence corpus is phonetically balanced, it is not naturalistic to read sentences off of a paper. Additionally, this study does not control for compensatory behavior that accompanies wearing face masks. This study also only considers one type of mask on account of economy, and only an adverse listening environment is considered. Finally, while crowdsourcing offers many participants, it also comes with the potential for things like bots and inattentive participants, although it is our hope that filtering out participants based on reliability and other factors combated that possibility.
+
+# Conclusion 
+In the end, we found that listeners were less accurate and reported greater listening effort for the PD group and for the mask condition. However, face masks were associated with a steeper decline in speech intelligibility and an increase in listener effort for talkers with PD. Additionally, listeners were more accurate and reported less effort when listening to clear and loud speech compared to habitual speech, and both clear and loud speech styles were associated with improvements in perceptual outcomes both with and without masks. 
+  
+# Acknowledgments
+
+Acknowledgements: The authors thank the participants for their time and contributions to this work.
+
+# Data Availability Statement
+
+De-identified data and code will be publicly available following the publication of this manuscript.
+
+# References
+
+# Tables and Figures
+
+<!--"each table or figure should appear on its own page...figures must be provided as a standard image format...tables must be provided as either an editable word doc or an editable excel sheet containing only text and no formulae"-->
+
+# Learning Outcomes
+
+<!--"Perspectives of the ASHA Special Interest Groups authors should include up to 3 learning outcomes in order to help create learning assessments for ASHA Continuing Education Units: https://www.asha.org/ce/for-providers/outcomes/ "-->
+
+# Appendices (optional)
+# Supplemental Material (optional)
